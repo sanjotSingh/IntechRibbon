@@ -5,10 +5,11 @@ using Autodesk.Revit.DB;
 using System.IO;
 using Autodesk.Revit.UI;
 using System.Windows.Forms;
-using GemBox.Spreadsheet;
+using OfficeOpenXml;
 
 
-using Excel = Microsoft.Office.Interop.Excel; //for the excel conversion
+
+//using Excel = Microsoft.Office.Interop.Excel; //for the excel conversion
 
 //unused so far
 using System.Text;
@@ -34,7 +35,7 @@ namespace IntechRibbon
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
+
             UIApplication uiApp = commandData.Application;
             Document doc = uiApp.ActiveUIDocument.Document;
 
@@ -150,10 +151,54 @@ namespace IntechRibbon
                         foreach (ViewSchedule vs in selected)
                         {
                             Directory.CreateDirectory(@"c:\\temp\\test"); //change this to selected directory in step 1
-                            vs.Export(@"c:\\temp\\test", vs.Name + ".txt", opt); //remove spl. charaters from vsname
+                            vs.Export(@"c:\\temp\\test", vs.Name + ".csv", opt);//instead of this, write directly to new excel file
                             
-                            ConvertToXlsx(@"c:\\temp\\test\\"+ vs.Name + ".txt", @"c:\\temp\\test\\revitexcel.xlsx");
+                            //ConvertToXlsx(@"c:\\temp\\test\\"+ vs.Name + ".txt", @"c:\\temp\\test\\revitexcel.xlsx");
+                            string csvFileName = @"c:\\temp\\test\\" + vs.Name + ".csv";
+                            string excelFileName = @"c:\\temp\\test\\workbook.xlsx";
+                            string template = @"C:\\Program Files\\Autodesk\\Revit 2022\\AddIns\\IntechRibbon\\template.xlsx";
+                            if (!File.Exists(template))
+                            {
+                                TaskDialog.Show("Error", "The template file does not exist.");
+                            }
+                            //string worksheetsName = "TEST";
 
+                            bool firstRowIsHeader = false;
+
+                            var format = new ExcelTextFormat();
+                            format.Delimiter = ',';
+                            format.EOL = "\r";              // DEFAULT IS "\r\n";
+                                                            // format.TextQualifier = '"';
+
+                            using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
+                            {
+                                using (ExcelPackage newPackage = new ExcelPackage())
+                                {
+                                    // Copy the single worksheet from the template workbook to the new workbook.
+                                    ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
+                                    ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add("NewWorksheetName", templateWorksheet);
+                                    copiedWorksheet.Cells["A1"].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
+                                    // Load the image (replace "imagePath" with the actual path to your image file).
+                                    var headerImage = copiedWorksheet.Drawings.AddPicture("HeaderImage", new FileInfo(@"c:\\temp\\test\\Header.png"));
+
+                                    // Define the header content with the image reference.
+                                    copiedWorksheet.HeaderFooter.OddHeader.LeftAlignedText = "&G HeaderImage"; // Specify the image reference after &G.
+                                    try
+                                    {
+                                        newPackage.SaveAs(new FileInfo(excelFileName));
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        TaskDialog.Show("Error", e.ToString());
+                                    }
+                                }
+                            }
+
+
+
+
+                            Console.WriteLine("Finished!");
+                            Console.ReadLine();
                         }
                     }
                 }
@@ -171,10 +216,6 @@ namespace IntechRibbon
         //ExportSchedulesToRows(Doc);
 
         // return Result.Succeeded;
-        public void convertToXlsx()
-        {
-
-        }
         public List<ViewSchedule> filterSchedules(Document doc)
         {
             List<ViewSchedule> coll = new FilteredElementCollector(doc)
@@ -204,7 +245,7 @@ namespace IntechRibbon
             }
             return schedules;
         }
-
+        /*
         void ConvertToXlsx(string sourcefile, string destfile)
         {
             int i, j;
@@ -228,7 +269,7 @@ namespace IntechRibbon
             xlWorkBook.Close(true, misValue, misValue);
             xlApp.Quit();
         }
-
+        */
         public List<List<string>> ExportSchedulesToRows(ViewSchedule schedule)
         {
             
