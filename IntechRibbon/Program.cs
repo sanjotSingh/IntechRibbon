@@ -167,6 +167,7 @@ namespace IntechRibbon
 
                             var format = new ExcelTextFormat();
                             format.Delimiter = ',';
+                            format.TextQualifier = '"';
                             format.EOL = "\r";              // DEFAULT IS "\r\n";
                                                             // format.TextQualifier = '"';
 
@@ -177,12 +178,37 @@ namespace IntechRibbon
                                     // Copy the single worksheet from the template workbook to the new workbook.
                                     ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
                                     ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add("NewWorksheetName", templateWorksheet);
-                                    copiedWorksheet.Cells["A1"].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
-                                    // Load the image (replace "imagePath" with the actual path to your image file).
-                                    var headerImage = copiedWorksheet.Drawings.AddPicture("HeaderImage", new FileInfo(@"c:\\temp\\test\\Header.png"));
 
-                                    // Define the header content with the image reference.
-                                    copiedWorksheet.HeaderFooter.OddHeader.LeftAlignedText = "&G HeaderImage"; // Specify the image reference after &G.
+
+                                    // Define the range where you want to start loading the data (e.g., C1)
+                                    ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
+
+                                    // Load data from the CSV, skipping the first row and setting the second row as the column headers.
+                                    var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
+
+
+                                    //add's image inside the header
+                                    var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
+                                        new FileInfo(@"c:\\temp\\test\\Header.png"), PictureAlignment.Centered
+                                        );
+
+                                    // Iterate through rows until an empty row is encountered.
+                                   // int currentColumn = 1; // Start from the fourth row
+                                   // while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[1, currentColumn].Text))
+                                    //{
+                                        // Access and process data in the current row.
+                                        //string cellValue = copiedWorksheet.Cells[currentColumn, 1].Text;
+                                        // Process other cells in the row as needed.
+                                      //  currentColumn++; // Move to the next row
+                                   // }
+                                    
+                                    
+                                    //merge cells
+                                    //string mergeCells = "A1:A"+ currentColumn;
+                                    //copiedWorksheet.Cells[mergeCells].Merge = true;
+
+
+
                                     try
                                     {
                                         newPackage.SaveAs(new FileInfo(excelFileName));
