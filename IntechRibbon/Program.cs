@@ -6,27 +6,8 @@ using System.IO;
 using Autodesk.Revit.UI;
 using System.Windows.Forms;
 using OfficeOpenXml;
-
-
-
-//using Excel = Microsoft.Office.Interop.Excel; //for the excel conversion
-
-//unused so far
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;//s
-using Autodesk.Revit;
-using Autodesk.Revit.ApplicationServices; //s
-using Autodesk.Revit.DB.Structure; //s
-using Autodesk.Revit.UI.Selection; //s
-using System.Diagnostics;
-using System.Collections;
-
-
-
-
-
-
+using OfficeOpenXml.Style;
+using OfficeOpenXml.Table;
 
 namespace IntechRibbon
 {
@@ -161,15 +142,11 @@ namespace IntechRibbon
                             {
                                 TaskDialog.Show("Error", "The template file does not exist.");
                             }
-                            //string worksheetsName = "TEST";
-
-                            bool firstRowIsHeader = false;
-
                             var format = new ExcelTextFormat();
                             format.Delimiter = ',';
-                            format.TextQualifier = '"';
+                            format.TextQualifier = '"';     // format.TextQualifier = '"';
                             format.EOL = "\r";              // DEFAULT IS "\r\n";
-                                                            // format.TextQualifier = '"';
+                                                            
 
                             using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
                             {
@@ -184,7 +161,8 @@ namespace IntechRibbon
                                     ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
 
                                     // Load data from the CSV, skipping the first row and setting the second row as the column headers.
-                                    var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
+                                    var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
+                                    ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
 
 
                                     //add's image inside the header
@@ -193,19 +171,75 @@ namespace IntechRibbon
                                         );
 
                                     // Iterate through rows until an empty row is encountered.
-                                   // int currentColumn = 1; // Start from the fourth row
-                                   // while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[1, currentColumn].Text))
-                                    //{
-                                        // Access and process data in the current row.
-                                        //string cellValue = copiedWorksheet.Cells[currentColumn, 1].Text;
-                                        // Process other cells in the row as needed.
-                                      //  currentColumn++; // Move to the next row
-                                   // }
-                                    
-                                    
-                                    //merge cells
-                                    //string mergeCells = "A1:A"+ currentColumn;
-                                    //copiedWorksheet.Cells[mergeCells].Merge = true;
+                                    int currentColumn = 1; // Start from the fourth row
+                                    while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[2, currentColumn].Text))
+                                    {
+                                       currentColumn++; // Move to the next row
+                                    }
+
+                                    int currentRow = 3; // Start from the fourth row
+                                    while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
+                                    {
+                                        currentRow++; // Move to the next row
+                                    }
+
+
+
+                                    String merger = "A1:"+ IndexToColumn(currentColumn-1)+"1"; //Format example "A1:E1"
+                                    copiedWorksheet.Cells[merger].Merge = true;
+                                    // Create a new ExcelStyle object to define cell formatting.
+                                    ExcelStyle cellStyle = copiedWorksheet.Cells[merger].Style;
+
+                                    // Set cell properties.
+                                    cellStyle.Font.Bold = true;
+                                    cellStyle.Font.Name = "Calibri";
+                                    cellStyle.Font.Size = 14;
+                                    cellStyle.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                                    cellStyle.Border.Top.Style = ExcelBorderStyle.Thin;
+                                    cellStyle.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                                    cellStyle.Border.Left.Style = ExcelBorderStyle.Thin;
+                                    cellStyle.Border.Right.Style = ExcelBorderStyle.Thin;
+
+                                    //Add a table onto the data
+
+                                    String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow-1); //get data range
+                                    TaskDialog.Show("Hello", merger2);
+                                    var dataRange = copiedWorksheet.Cells[merger2];
+                                    ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table");
+                                    table.TableStyle = TableStyles.Light8;
+                                    table.ShowHeader = true;
+
+
+
+
+                                    //autofit cell columns
+                                    copiedWorksheet.Cells.AutoFitColumns();
+
+                                    //var horizontalPageBreaks = worksheet.PrinterSettings.PageSetup.Breaks;
+                                    //check for page bleed and change to horizontal
+                                    //copiedWorksheet.PrinterSettings.Orientation = eOrientation.Portrait;
+                                    //copiedWorksheet.PrinterSettings.FitToPage = true;
+
+
+
+
+                                    // Get the height of the row in points.
+
+
+
+                                    double rowHeight =0;
+                                    for (int i =currentColumn; i!= 1; i--)
+                                    {
+                                        ExcelColumn row = copiedWorksheet.Column(i);
+                                        rowHeight += row.Width;
+                                    }
+                                    if (rowHeight < 100)
+                                    {
+                                        TaskDialog.Show("Error", rowHeight.ToString());
+                                    }
+                                    else
+                                        TaskDialog.Show("Error", rowHeight.ToString());
+
 
 
 
@@ -219,11 +253,7 @@ namespace IntechRibbon
                                     }
                                 }
                             }
-
-
-
-
-                            Console.WriteLine("Finished!");
+                            Console.WriteLine("Finished!");//do a task dialog instead
                             Console.ReadLine();
                         }
                     }
@@ -238,10 +268,6 @@ namespace IntechRibbon
                 return Autodesk.Revit.UI.Result.Failed;
             }
         }
-
-        //ExportSchedulesToRows(Doc);
-
-        // return Result.Succeeded;
         public List<ViewSchedule> filterSchedules(Document doc)
         {
             List<ViewSchedule> coll = new FilteredElementCollector(doc)
@@ -271,31 +297,6 @@ namespace IntechRibbon
             }
             return schedules;
         }
-        /*
-        void ConvertToXlsx(string sourcefile, string destfile)
-        {
-            int i, j;
-            Excel.Application xlApp;
-            Excel.Workbook xlWorkBook;
-            Excel._Worksheet xlWorkSheet;
-            object misValue = System.Reflection.Missing.Value;
-            string[] lines, cells;
-            lines = File.ReadAllLines(sourcefile);
-            xlApp = new Excel.Application();
-            xlApp.DisplayAlerts = false;
-            xlWorkBook = xlApp.Workbooks.Add();
-            xlWorkSheet = (Excel._Worksheet)xlWorkBook.ActiveSheet;
-            for (i = 0; i < lines.Length; i++)
-            {
-                cells = lines[i].Split(new Char[] { '\t', ';' });
-                for (j = 0; j < cells.Length; j++)
-                    xlWorkSheet.Cells[i + 1, j + 1] = cells[j];
-            }
-            xlWorkBook.SaveAs(destfile, Excel.XlFileFormat.xlWorkbookDefault, misValue, misValue, misValue, misValue, Excel.XlSaveAsAccessMode.xlExclusive, misValue, misValue, misValue, misValue, misValue);
-            xlWorkBook.Close(true, misValue, misValue);
-            xlApp.Quit();
-        }
-        */
         public List<List<string>> ExportSchedulesToRows(ViewSchedule schedule)
         {
             
@@ -332,6 +333,25 @@ namespace IntechRibbon
                 rows.Add(currentRow);
             }
             return rows;
+        }
+
+        public char IndexToColumn(int a) {
+            char[] alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+#pragma warning disable CS0168 // Variable is declared but never used
+            try
+            {
+                return alpha[a-1];
+            }
+            catch (IndexOutOfRangeException e) 
+            {
+                //if this error appears. Change the array above to include alphabets such as "AA", "AB" and so on.
+                TaskDialog.Show("Error","This program was coded to handle 26 rows or less. Please edit source code to fix this error");
+                return 'A';
+            }
+            #pragma warning restore CS0168 // Variable is declared but never used
+
+            
+        
         }
     }
 
