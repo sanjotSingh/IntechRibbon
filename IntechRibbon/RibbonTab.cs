@@ -81,7 +81,7 @@ namespace IntechRibbon
             //pushButton.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWall-S.png"), UriKind.Absolute)); //add intech.png instead
             //pushButton.ToolTip = "Creates a partition wall in the building model.";
             //pushButton.ToolTipImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWallTooltip.bmp"), UriKind.Absolute));
-            pushButton = splitButton.AddPushButton(new PushButtonData("TigerExport", "Tiger Export", AddInPath, "IntechRibbon.ExportSchedulesToCSV"));//need to implement exportschedulrtocsv method
+            pushButton = splitButton.AddPushButton(new PushButtonData("TigerExport", "Tiger Export", AddInPath, "IntechRibbon.TigerExport"));//need to implement exportschedulrtocsv method
             //pushButton.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "StrcturalWall.png"), UriKind.Absolute));
             //pushButton.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "StrcturalWall-S.png"), UriKind.Absolute));//add intech.png instead
             #endregion
