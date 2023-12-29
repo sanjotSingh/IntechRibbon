@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Autodesk.Revit.DB;
-using System.IO;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Windows.Forms;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using OfficeOpenXml.Table;
-using System.Windows.Controls;
-using IntechRibbon;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows.Forms;
 
 namespace IntechRibbon
 {
@@ -42,7 +40,7 @@ namespace IntechRibbon
                 taskDialog.MainInstruction = "Select destination and export options";
                 taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "My Desktop");
                 taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Where Revit Model Is");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink3, "My Downloads");
+                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink3, "My Documents");
                 taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink4, "User Select");
 
                 TaskDialogResult result = taskDialog.Show();
@@ -127,18 +125,18 @@ namespace IntechRibbon
                         message = ex.Message;
                         return Autodesk.Revit.UI.Result.Failed;
                     }
-                    
+
 
                 }
-                
+
             }
 
             return Result.Succeeded;
 
         }
-        
-       
-        
+
+
+
     }
 
 
@@ -649,4 +647,3 @@ namespace IntechRibbon
     }
 }
 //to do: Finish tiger export button. 
-//save file on specified path
