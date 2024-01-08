@@ -28,7 +28,6 @@ namespace IntechRibbon
         {
             InitializeComponent();
             this.CenterToParent();
-            //add each schedule here
 
             //checkedListBox.Items.Add("excel");
         }
@@ -62,7 +61,7 @@ namespace IntechRibbon
             }
         }
 
-        private void bomExport_Click(object sender, EventArgs e)
+        private void saveAS_Click(object sender, EventArgs e)//this is the save buttom
         {
             this.Close(); //just closing the form
         }

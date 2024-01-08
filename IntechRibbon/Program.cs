@@ -7,11 +7,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using static Autodesk.Revit.DB.SpecTypeId;
 
 namespace IntechRibbon
 {
-    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]//EVERY COMMAND REQUIRES THIS!
     public class ExportSchedulesToCSV : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -27,63 +29,12 @@ namespace IntechRibbon
             }
 
             string baseFolder = string.Empty;
-            bool openExported = false;
-            bool inclHeaders = false;
             List<ViewSchedule> schedules;//list of scheuled
             List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
-
             Dictionary<ViewSchedule, string> displayNames = new Dictionary<ViewSchedule, string>(); //to display proper name in the checkedlistbox.
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
 
-            // Show a dialog to select the destination folder and export options
-            using (TaskDialog taskDialog = new TaskDialog("Export Schedules to CSV"))
-            {
-                taskDialog.MainInstruction = "Select destination and export options";
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "My Desktop");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Where Revit Model Is");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink3, "My Documents");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink4, "User Select");
 
-                TaskDialogResult result = taskDialog.Show();
-
-                if (result == TaskDialogResult.CommandLink1)
-                {
-                    baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                }
-                else if (result == TaskDialogResult.CommandLink2)
-                {
-                    baseFolder = Path.GetDirectoryName(doc.PathName); // Get the folder of the active Revit document
-                }
-                else if (result == TaskDialogResult.CommandLink3)
-                {
-                    baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                }
-                else if (result == TaskDialogResult.CommandLink4)
-                {
-                    using (FolderBrowserDialog folderBrowser = new FolderBrowserDialog())
-                    {
-                        folderBrowser.Description = "Select a folder";
-                        folderBrowser.RootFolder = Environment.SpecialFolder.Desktop;
-                        DialogResult folderResult = folderBrowser.ShowDialog();
-
-                        if (folderResult == DialogResult.OK)
-                        {
-                            baseFolder = folderBrowser.SelectedPath;
-                        }
-                        else
-                        {
-                            return Result.Cancelled;
-                        }
-                    }
-                }
-
-                openExported = result == TaskDialogResult.CommandLink1 || result == TaskDialogResult.CommandLink2;
-                inclHeaders = result == TaskDialogResult.CommandLink1 || result == TaskDialogResult.CommandLink3;
-            }
-
-            if (string.IsNullOrEmpty(baseFolder))
-            {
-                return Result.Cancelled;
-            }
 
 
             //we now have the location where the file will be saved.
@@ -96,7 +47,7 @@ namespace IntechRibbon
                 {
                     selectionForm.checkedListBox.Items.Add(w.Name);
                 }
-                result2 = selectionForm.ShowDialog();
+                result2 = selectionForm.ShowDialog(); //shows dialog selection windoe
                 // Determine if there are any items checked.  
                 if (selectionForm.checkedListBox.CheckedItems.Count != 0)
                 {
@@ -104,7 +55,6 @@ namespace IntechRibbon
 
                     for (int x = 0; x < selectionForm.checkedListBox.CheckedItems.Count; x++)
                     {
-                        System.Windows.Forms.MessageBox.Show(selectionForm.checkedListBox.CheckedItems[x].ToString());
                         //compare schedule name
                         foreach (ViewSchedule w in schedules)
                         {
@@ -115,9 +65,29 @@ namespace IntechRibbon
                             }
                         }
                     }
+
+                    //prompt user to select file save location
+                    saveFileDialog1.Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*";
+                    saveFileDialog1.FilterIndex = 1; // Set the default filter to Excel files
+                    saveFileDialog1.DefaultExt = "xlsx"; // Set the default extension
+
+                    if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+                    {
+                        saveFileDialog1.OpenFile();
+                        baseFolder = saveFileDialog1.FileName;
+
+
+                    }
+                    if (string.IsNullOrEmpty(baseFolder))
+                    {
+                        return Result.Cancelled;
+                    }
+
+
                     try
                     {
-                        utility.tigerExport(doc, ref message, baseFolder, result2, schedules, selected);
+                        //convert selected schexdule to excel
+                        utility.exportSchedulesToCSV(doc, ref message, baseFolder, result2, schedules, selected);
                     }
                     catch (Exception ex)
                     {
@@ -141,6 +111,8 @@ namespace IntechRibbon
 
 
     //configure this to only export new worksheet per schedule
+    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
+
     public class TigerExport : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -156,63 +128,11 @@ namespace IntechRibbon
             }
 
             string baseFolder = string.Empty;
-            bool openExported = false;
-            bool inclHeaders = false;
             List<ViewSchedule> schedules;//list of scheuled
             List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
-
             Dictionary<ViewSchedule, string> displayNames = new Dictionary<ViewSchedule, string>(); //to display proper name in the checkedlistbox.
 
-            // Show a dialog to select the destination folder and export options
-            using (TaskDialog taskDialog = new TaskDialog("Export Schedules to CSV"))
-            {
-                taskDialog.MainInstruction = "Select destination and export options";
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "My Desktop");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Where Revit Model Is");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink3, "My Downloads");
-                taskDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink4, "User Select");
 
-                TaskDialogResult result = taskDialog.Show();
-
-                if (result == TaskDialogResult.CommandLink1)
-                {
-                    baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                }
-                else if (result == TaskDialogResult.CommandLink2)
-                {
-                    baseFolder = Path.GetDirectoryName(doc.PathName); // Get the folder of the active Revit document
-                }
-                else if (result == TaskDialogResult.CommandLink3)
-                {
-                    baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                }
-                else if (result == TaskDialogResult.CommandLink4)
-                {
-                    using (FolderBrowserDialog folderBrowser = new FolderBrowserDialog())
-                    {
-                        folderBrowser.Description = "Select a folder";
-                        folderBrowser.RootFolder = Environment.SpecialFolder.Desktop;
-                        DialogResult folderResult = folderBrowser.ShowDialog();
-
-                        if (folderResult == DialogResult.OK)
-                        {
-                            baseFolder = folderBrowser.SelectedPath;
-                        }
-                        else
-                        {
-                            return Result.Cancelled;
-                        }
-                    }
-                }
-
-                openExported = result == TaskDialogResult.CommandLink1 || result == TaskDialogResult.CommandLink2;
-                inclHeaders = result == TaskDialogResult.CommandLink1 || result == TaskDialogResult.CommandLink3;
-            }
-
-            if (string.IsNullOrEmpty(baseFolder))
-            {
-                return Result.Cancelled;
-            }
 
 
             //we now have the location where the file will be saved.
@@ -233,7 +153,6 @@ namespace IntechRibbon
 
                     for (int x = 0; x < selectionForm.checkedListBox.CheckedItems.Count; x++)
                     {
-                        System.Windows.Forms.MessageBox.Show(selectionForm.checkedListBox.CheckedItems[x].ToString());
                         //compare schedule name
                         foreach (ViewSchedule w in schedules)
                         {
@@ -244,8 +163,25 @@ namespace IntechRibbon
                             }
                         }
                     }
+
+                    //prompt user to select file save location
+                    var folderBrowserDialog1 = new FolderBrowserDialog();
+                    DialogResult result = folderBrowserDialog1.ShowDialog();
+                    if (result == DialogResult.OK)
+                    {
+                        baseFolder = folderBrowserDialog1.SelectedPath;
+
+
+                    }
+                    if (string.IsNullOrEmpty(baseFolder))
+                    {
+                        return Result.Cancelled;
+                    }
+
+
                     try
                     {
+                        //convert selected schexdule to excel
                         utility.tigerExport(doc, ref message, baseFolder, result2, schedules, selected);
                     }
                     catch (Exception ex)
@@ -263,7 +199,6 @@ namespace IntechRibbon
             return Result.Succeeded;
 
         }
-
     }
     public static class utility
     {
@@ -315,18 +250,14 @@ namespace IntechRibbon
 
 
         }
-        public static void adjustOrientation()
-        {
-
-        }
-        public static Result tigerExport(Document doc, ref string message, string baseFolder, DialogResult result,
+        public static Result tigerExport(Document doc, ref string message, string saveFolder, DialogResult result,
                                 List<ViewSchedule> schedules,
                                 List<ViewSchedule> selected
                                )
         {
-
-            while (result == DialogResult.None || result == DialogResult.Retry)
+            if (result == DialogResult.None || result == DialogResult.Retry || result == DialogResult.Cancel)
             {
+
                 //now we have a list of selected schedules.
                 //we need to export these schedules
                 ViewScheduleExportOptions opt = new ViewScheduleExportOptions();
@@ -334,7 +265,7 @@ namespace IntechRibbon
                 var roamingApplicationPath = Environment.ExpandEnvironmentVariables("%appdata%");
                 var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
                 Directory.CreateDirectory(fullPath);
-                TaskDialog.Show("PATH", fullPath);
+
                 foreach (ViewSchedule vs in selected)
                 {
                     //change this to selected directory in step 1
@@ -342,8 +273,8 @@ namespace IntechRibbon
 
 
                     string csvFileName = fullPath + @"\" + vs.Name + @".csv";
-                    string excelFileName = baseFolder + vs.Name;
-                    string template = @"C:\\Program Files\\Autodesk\\Revit 2022\\AddIns\\IntechRibbon\\template.xlsx";
+                    string excelFileName = saveFolder + @"\" + vs.Name+ @".xlsx";
+                    string template = fullPath+@"\\template.xlsx";
                     if (!File.Exists(template))
                     {
                         TaskDialog.Show("Error", "The template file does not exist.");
@@ -353,14 +284,18 @@ namespace IntechRibbon
                     format.TextQualifier = '"';     // format.TextQualifier = '"';
                     format.EOL = "\r";              // DEFAULT IS "\r\n";
 
+                    string pattern = @"[\[\]:*?/\\]";
+                    string worksheetName;
 
                     using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
                     {
                         using (ExcelPackage newPackage = new ExcelPackage())
                         {
+                            worksheetName = Regex.Replace(vs.Name, pattern, "");
+
                             // Copy the single worksheet from the template workbook to the new workbook.
                             ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
-                            ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add("NewWorksheetName", templateWorksheet);
+                            ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(worksheetName, templateWorksheet);
 
 
                             // Define the range where you want to start loading the data (e.g., C1)
@@ -373,25 +308,23 @@ namespace IntechRibbon
 
                             //add's image inside the header
                             var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
-                                new FileInfo(@"c:\\temp\\test\\Header.png"), PictureAlignment.Centered
+                                new FileInfo(fullPath+@"\\Header.png"), PictureAlignment.Centered
                                 );
 
                             // Iterate through rows until an empty row is encountered.
-                            int currentColumn = 1; // Start from the fourth row
+                            int currentColumn = 1; // Start from the first colums
                             while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[2, currentColumn].Text))
                             {
                                 currentColumn++; // Move to the next row
                             }
 
-                            int currentRow = 3; // Start from the fourth row
+                            int currentRow = 4; // Start from the fourth row 
                             while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
                             {
                                 currentRow++; // Move to the next row
                             }
 
-
-
-                            String merger = "A1:" + IndexToColumn(currentColumn - 1) + "1"; //Format example "A1:E1"
+                            System.String merger = "A1:" + IndexToColumn(currentColumn - 1) + "1"; //Format example "A1:E1"
                             copiedWorksheet.Cells[merger].Merge = true;
                             // Create a new ExcelStyle object to define cell formatting.
                             ExcelStyle cellStyle = copiedWorksheet.Cells[merger].Style;
@@ -408,8 +341,7 @@ namespace IntechRibbon
 
                             //Add a table onto the data
 
-                            String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
-                            TaskDialog.Show("Hello", merger2);
+                            System.String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
                             var dataRange = copiedWorksheet.Cells[merger2];
                             ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table");
                             table.TableStyle = TableStyles.Light8;
@@ -435,14 +367,14 @@ namespace IntechRibbon
                             }
                             if (rowHeight < 100)
                             {
-                                TaskDialog.Show("Error", rowHeight.ToString());
+                                copiedWorksheet.PrinterSettings.Orientation = eOrientation.Landscape;
                             }
                             else
-                                TaskDialog.Show("Error", rowHeight.ToString());
+                            {
+                                copiedWorksheet.PrinterSettings.Orientation = eOrientation.Portrait;
+                            }
 
-
-
-
+                            File.Delete(csvFileName); //Remove Temporary File
                             try
                             {
                                 newPackage.SaveAs(new FileInfo(excelFileName));
@@ -462,188 +394,148 @@ namespace IntechRibbon
             return Autodesk.Revit.UI.Result.Succeeded;
 
         }
-        public static Result exportSchedulesToCSV(Document doc, ref string message, string baseFolder)
+        public static Result exportSchedulesToCSV(Document doc, ref string message, string saveFolder, DialogResult result,
+                                List<ViewSchedule> schedules,
+                                List<ViewSchedule> selected
+                               )
         {
-            List<ViewSchedule> schedules;//list of scheuled
-            List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
-            try
+            if (result == DialogResult.None || result == DialogResult.Retry || result == DialogResult.Cancel)
             {
+                //now we have a list of selected schedules.
+                //we need to export these schedules
+                ViewScheduleExportOptions opt = new ViewScheduleExportOptions();
+                opt.FieldDelimiter = ","; //csv file is seperated by a comma
+                var roamingApplicationPath = Environment.ExpandEnvironmentVariables("%appdata%");
+                var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
+                Directory.CreateDirectory(fullPath);
+                string excelFileName = saveFolder;
+                //change this to selected directory in step 1
 
-                // Create a form to select objects.
-                DialogResult result = System.Windows.Forms.DialogResult.None;
-                while (result == DialogResult.None || result == DialogResult.Retry)
+                string template = fullPath+@"\\template.xlsx";
+                if (!File.Exists(template))
                 {
-                    // Show the selection form?.
+                    TaskDialog.Show("Error", "The template file does not exist.");
+                }
+                var format = new ExcelTextFormat();
+                format.Delimiter = ',';
+                format.TextQualifier = '"';     // format.TextQualifier = '"';
+                format.EOL = "\r";              // DEFAULT IS "\r\n";
 
-                    using (SelectionForm selectionForm = new SelectionForm())
+
+                using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
+                {
+                    using (ExcelPackage newPackage = new ExcelPackage())
                     {
-                        schedules = filterSchedules(doc);
-                        foreach (ViewSchedule w in schedules)
+                        int tableNum = 0;
+                        ExcelWorksheet templateWorksheet;
+                        ExcelWorksheet copiedWorksheet;
+                        ExcelRangeBase startCell;
+                        templateWorksheet = templatePackage.Workbook.Worksheets[0]; // compy the first sheet from our template
+                        foreach (ViewSchedule vs2 in selected)
                         {
-                            selectionForm.checkedListBox.Items.Add(w.Name);
-                        }
-                        result = selectionForm.ShowDialog();
-                        // Determine if there are any items checked.  
-                        if (selectionForm.checkedListBox.CheckedItems.Count != 0)
-                        {
-                            // If so, loop through all checked items   
+                            //export Schedules To CSV 
+                            vs2.Export(fullPath, vs2.Name + ".csv", opt);//Temp file. This will be deleted later
+                            string csvFileName = fullPath + @"\" + vs2.Name + @".csv"; 
+                            // Copy the single worksheet from the template workbook to the new workbook.
+                            copiedWorksheet = newPackage.Workbook.Worksheets.Add(vs2.Name, templateWorksheet);
 
-                            for (int x = 0; x < selectionForm.checkedListBox.CheckedItems.Count; x++)
+
+                            // Define the range where you want to start loading the data (e.g., C1)
+                            startCell = copiedWorksheet.Cells["A1"];
+                            // Load data from the CSV, skipping the first row and setting the second row as the column headers.
+                            var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
+                            ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
+
+                            //add's image inside the header
+                            var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
+                                new FileInfo(fullPath+@"\\Header.png"), PictureAlignment.Centered
+                                );
+                            // Iterate through rows until an empty row is encountered.
+                            int currentColumn = 1; // Start from the first colums
+                            while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[2, currentColumn].Text))
                             {
-                                System.Windows.Forms.MessageBox.Show(selectionForm.checkedListBox.CheckedItems[x].ToString());
-                                //compare schedule name
-                                foreach (ViewSchedule w in schedules)
-                                {
-                                    //if schedule name is in the CheckedItems list, add schedule to selected list.
-                                    if (w.Name.Equals(selectionForm.checkedListBox.CheckedItems[x]))
-                                    {
-                                        selected.Add(w);
-                                    }
-                                }
+                                currentColumn++; // Move to the next row
+                            }
+                            int currentRow = 4; // Start from the fourth row 
+                            while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
+                            {
+                                currentRow++; // Move to the next row
                             }
 
+                            System.String merger = "A1:" + IndexToColumn(currentColumn - 1) + "1"; //Format example "A1:E1"
+                            copiedWorksheet.Cells[merger].Merge = true;
+                            // Create a new ExcelStyle object to define cell formatting.
+                            ExcelStyle cellStyle = copiedWorksheet.Cells[merger].Style;
+
+                            // Set cell properties.
+                            cellStyle.Font.Bold = true;
+                            cellStyle.Font.Name = "Calibri";
+                            cellStyle.Font.Size = 14;
+                            cellStyle.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                            cellStyle.Border.Top.Style = ExcelBorderStyle.Thin;
+                            cellStyle.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                            cellStyle.Border.Left.Style = ExcelBorderStyle.Thin;
+                            cellStyle.Border.Right.Style = ExcelBorderStyle.Thin;
+                            //Add a table onto the data
+
+                            System.String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
+
+                            var dataRange = copiedWorksheet.Cells[merger2];
+                            ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table"+ tableNum);
+                            tableNum += 1;
+                            table.TableStyle = TableStyles.Light8;
+                            table.ShowHeader = true;
+
+
+
+                            //autofit cell columns
+                            copiedWorksheet.Cells.AutoFitColumns();
+
+
+
+
+                            // Get the height of the row in points.
+
+                            double rowHeight = 0;
+                            for (int i = currentColumn; i != 1; i--)
+                            {
+                                ExcelColumn row = copiedWorksheet.Column(i);
+                                rowHeight += row.Width;
+                            }
+                            if (rowHeight < 100)
+                            {
+                                copiedWorksheet.PrinterSettings.Orientation = eOrientation.Landscape;
+                            }
+                            else 
+                            {
+                                copiedWorksheet.PrinterSettings.Orientation = eOrientation.Portrait;
+                            }
+
+                            File.Delete(csvFileName); //Remove Temporary File
+
                         }
-                        //now we have a list of selected schedules.
-                        //we need to export these schedules
-                        ViewScheduleExportOptions opt = new ViewScheduleExportOptions();
-                        opt.FieldDelimiter = ","; //csv file is seperated by a comma
-                        var roamingApplicationPath = Environment.ExpandEnvironmentVariables("%appdata%");
-                        var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
-                        Directory.CreateDirectory(fullPath);
-                        TaskDialog.Show("PATH", fullPath);
-                        foreach (ViewSchedule vs in selected)
+
+                        try
                         {
-                            //change this to selected directory in step 1
-                            vs.Export(fullPath, vs.Name + ".csv", opt);
-
-
-                            string csvFileName = fullPath + @"\" + vs.Name + @".csv";
-                            string excelFileName = baseFolder + vs.Name;
-                            string template = @"C:\\Program Files\\Autodesk\\Revit 2022\\AddIns\\IntechRibbon\\template.xlsx";
-                            if (!File.Exists(template))
-                            {
-                                TaskDialog.Show("Error", "The template file does not exist.");
-                            }
-                            var format = new ExcelTextFormat();
-                            format.Delimiter = ',';
-                            format.TextQualifier = '"';     // format.TextQualifier = '"';
-                            format.EOL = "\r";              // DEFAULT IS "\r\n";
-
-
-                            using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
-                            {
-                                using (ExcelPackage newPackage = new ExcelPackage())
-                                {
-                                    // Copy the single worksheet from the template workbook to the new workbook.
-                                    ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
-                                    ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add("NewWorksheetName", templateWorksheet);
-
-
-                                    // Define the range where you want to start loading the data (e.g., C1)
-                                    ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
-
-                                    // Load data from the CSV, skipping the first row and setting the second row as the column headers.
-                                    var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
-                                    ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
-
-
-                                    //add's image inside the header
-                                    var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
-                                        new FileInfo(@"c:\\temp\\test\\Header.png"), PictureAlignment.Centered
-                                        );
-
-                                    // Iterate through rows until an empty row is encountered.
-                                    int currentColumn = 1; // Start from the fourth row
-                                    while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[2, currentColumn].Text))
-                                    {
-                                        currentColumn++; // Move to the next row
-                                    }
-
-                                    int currentRow = 3; // Start from the fourth row
-                                    while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
-                                    {
-                                        currentRow++; // Move to the next row
-                                    }
-
-
-
-                                    String merger = "A1:" + IndexToColumn(currentColumn - 1) + "1"; //Format example "A1:E1"
-                                    copiedWorksheet.Cells[merger].Merge = true;
-                                    // Create a new ExcelStyle object to define cell formatting.
-                                    ExcelStyle cellStyle = copiedWorksheet.Cells[merger].Style;
-
-                                    // Set cell properties.
-                                    cellStyle.Font.Bold = true;
-                                    cellStyle.Font.Name = "Calibri";
-                                    cellStyle.Font.Size = 14;
-                                    cellStyle.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                                    cellStyle.Border.Top.Style = ExcelBorderStyle.Thin;
-                                    cellStyle.Border.Bottom.Style = ExcelBorderStyle.Thin;
-                                    cellStyle.Border.Left.Style = ExcelBorderStyle.Thin;
-                                    cellStyle.Border.Right.Style = ExcelBorderStyle.Thin;
-
-                                    //Add a table onto the data
-
-                                    String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
-                                    TaskDialog.Show("Hello", merger2);
-                                    var dataRange = copiedWorksheet.Cells[merger2];
-                                    ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table");
-                                    table.TableStyle = TableStyles.Light8;
-                                    table.ShowHeader = true;
-
-
-
-
-                                    //autofit cell columns
-                                    copiedWorksheet.Cells.AutoFitColumns();
-
-
-
-
-
-                                    // Get the height of the row in points.
-
-                                    double rowHeight = 0;
-                                    for (int i = currentColumn; i != 1; i--)
-                                    {
-                                        ExcelColumn row = copiedWorksheet.Column(i);
-                                        rowHeight += row.Width;
-                                    }
-                                    if (rowHeight < 100)
-                                    {
-                                        TaskDialog.Show("Error", rowHeight.ToString());
-                                    }
-                                    else
-                                        TaskDialog.Show("Error", rowHeight.ToString());
-
-
-
-
-                                    try
-                                    {
-                                        newPackage.SaveAs(new FileInfo(excelFileName));
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        TaskDialog.Show("Error", e.ToString());
-                                    }
-                                }
-                            }
-                            Console.WriteLine("Finished!");//do a task dialog instead
-                            Console.ReadLine();
+                            TaskDialog.Show("Sucess", "File will now be saved");
+                            newPackage.SaveAs(new FileInfo(excelFileName));
                         }
+                        catch (Exception e)
+                        {
+                            TaskDialog.Show("Error", e.ToString());
+                        }
+                        
                     }
                 }
+                Console.WriteLine("Finished!");//do a task dialog instead
+                Console.ReadLine();
+                
 
-                return Autodesk.Revit.UI.Result.Succeeded;
             }
-            catch (Exception ex)
-            {
-                // If any error, give error information and return failed
-                message = ex.Message;
-                return Autodesk.Revit.UI.Result.Failed;
-            }
+
+            return Autodesk.Revit.UI.Result.Succeeded;
+
         }
+
     }
 }
-//to do: Finish tiger export button. 

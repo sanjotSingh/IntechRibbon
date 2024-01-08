@@ -51,9 +51,9 @@
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(392, 23);
             this.button4.TabIndex = 9;
-            this.button4.Text = "BOM Export";
+            this.button4.Text = "Save as";
             this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.bomExport_Click);
+            this.button4.Click += new System.EventHandler(this.saveAS_Click);
             // 
             // button3
             // 

@@ -76,7 +76,7 @@ namespace IntechRibbon
             #region Create a SplitButton for user to create Non-Structural or Structural Wall
             SplitButtonData splitButtonData = new SplitButtonData("BOM Export", "Tiger Export");
             SplitButton splitButton = ribbonSamplePanel.AddItem(splitButtonData) as SplitButton;
-            PushButton pushButton = splitButton.AddPushButton(new PushButtonData("BOMExport", "BOMExport", AddInPath, "IntechRibbon.ExportSchedulesToCSV"));
+            PushButton pushButton = splitButton.AddPushButton(new PushButtonData("BOMExport", "BOM Export", AddInPath, "IntechRibbon.ExportSchedulesToCSV"));
             //pushButton.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWall.png"), UriKind.Absolute));
             //pushButton.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWall-S.png"), UriKind.Absolute)); //add intech.png instead
             //pushButton.ToolTip = "Creates a partition wall in the building model.";
