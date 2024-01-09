@@ -32,10 +32,6 @@ namespace IntechRibbon
             List<ViewSchedule> schedules;//list of scheuled
             List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
             Dictionary<ViewSchedule, string> displayNames = new Dictionary<ViewSchedule, string>(); //to display proper name in the checkedlistbox.
-            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
-
-
-
 
             //we now have the location where the file will be saved.
             // Create a form to select schedules.
@@ -67,13 +63,13 @@ namespace IntechRibbon
                     }
 
                     //prompt user to select file save location
+                    SaveFileDialog saveFileDialog1 = new SaveFileDialog();
                     saveFileDialog1.Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*";
                     saveFileDialog1.FilterIndex = 1; // Set the default filter to Excel files
                     saveFileDialog1.DefaultExt = "xlsx"; // Set the default extension
 
                     if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                     {
-                        saveFileDialog1.OpenFile();
                         baseFolder = saveFileDialog1.FileName;
 
 
@@ -92,7 +88,7 @@ namespace IntechRibbon
                     catch (Exception ex)
                     {
                         // If any error, give error information and return failed
-                        message = ex.Message;
+                        TaskDialog.Show("ERROR", ex.ToString());
                         return Autodesk.Revit.UI.Result.Failed;
                     }
 
@@ -103,10 +99,7 @@ namespace IntechRibbon
 
             return Result.Succeeded;
 
-        }
-
-
-
+        }        
     }
 
 
@@ -234,7 +227,6 @@ namespace IntechRibbon
         public static char IndexToColumn(int a)
         {
             char[] alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
-#pragma warning disable CS0168 // Variable is declared but never used
             try
             {
                 return alpha[a - 1];
@@ -245,7 +237,6 @@ namespace IntechRibbon
                 TaskDialog.Show("Error", "This program was coded to handle 26 rows or less. Please edit source code to fix this error");
                 return 'A';
             }
-#pragma warning restore CS0168 // Variable is declared but never used
 
 
 
@@ -273,8 +264,8 @@ namespace IntechRibbon
 
 
                     string csvFileName = fullPath + @"\" + vs.Name + @".csv";
-                    string excelFileName = saveFolder + @"\" + vs.Name+ @".xlsx";
-                    string template = fullPath+@"\\template.xlsx";
+                    string excelFileName = saveFolder + @"\" + vs.Name + @".xlsx";
+                    string template = fullPath + @"\\template.xlsx";
                     if (!File.Exists(template))
                     {
                         TaskDialog.Show("Error", "The template file does not exist.");
@@ -297,18 +288,16 @@ namespace IntechRibbon
                             ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
                             ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(worksheetName, templateWorksheet);
 
-
                             // Define the range where you want to start loading the data (e.g., C1)
                             ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
 
                             // Load data from the CSV, skipping the first row and setting the second row as the column headers.
                             var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
-                            ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
 
 
                             //add's image inside the header
                             var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
-                                new FileInfo(fullPath+@"\\Header.png"), PictureAlignment.Centered
+                                new FileInfo(fullPath + @"\\Header.png"), PictureAlignment.Centered
                                 );
 
                             // Iterate through rows until an empty row is encountered.
@@ -340,25 +329,16 @@ namespace IntechRibbon
                             cellStyle.Border.Right.Style = ExcelBorderStyle.Thin;
 
                             //Add a table onto the data
-
                             System.String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
                             var dataRange = copiedWorksheet.Cells[merger2];
                             ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table");
                             table.TableStyle = TableStyles.Light8;
                             table.ShowHeader = true;
 
-
-
-
                             //autofit cell columns
                             copiedWorksheet.Cells.AutoFitColumns();
 
-
-
-
-
                             // Get the height of the row in points.
-
                             double rowHeight = 0;
                             for (int i = currentColumn; i != 1; i--)
                             {
@@ -378,6 +358,7 @@ namespace IntechRibbon
                             try
                             {
                                 newPackage.SaveAs(new FileInfo(excelFileName));
+                                //need to delete csv file.
                             }
                             catch (Exception e)
                             {
@@ -385,10 +366,7 @@ namespace IntechRibbon
                             }
                         }
                     }
-                    Console.WriteLine("Finished!");//do a task dialog instead
-                    Console.ReadLine();
                 }
-
             }
 
             return Autodesk.Revit.UI.Result.Succeeded;
@@ -409,9 +387,11 @@ namespace IntechRibbon
                 var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
                 Directory.CreateDirectory(fullPath);
                 string excelFileName = saveFolder;
+                TaskDialog.Show("File Name", excelFileName);
+
                 //change this to selected directory in step 1
 
-                string template = fullPath+@"\\template.xlsx";
+                string template = fullPath + @"\\template.xlsx";
                 if (!File.Exists(template))
                 {
                     TaskDialog.Show("Error", "The template file does not exist.");
@@ -424,31 +404,31 @@ namespace IntechRibbon
 
                 using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
                 {
-                    using (ExcelPackage newPackage = new ExcelPackage())
+                    // Copy the single worksheet from the template workbook to the new workbook.
+                    ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
+                    int tableNum = 0;
+                    foreach (ViewSchedule vs2 in selected)
                     {
-                        int tableNum = 0;
-                        ExcelWorksheet templateWorksheet;
-                        ExcelWorksheet copiedWorksheet;
-                        ExcelRangeBase startCell;
-                        templateWorksheet = templatePackage.Workbook.Worksheets[0]; // compy the first sheet from our template
-                        foreach (ViewSchedule vs2 in selected)
+                        using (ExcelPackage newPackage = new ExcelPackage(excelFileName))
                         {
+                            
+                            ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(vs2.Name, templateWorksheet);
+                        
                             //export Schedules To CSV 
                             vs2.Export(fullPath, vs2.Name + ".csv", opt);//Temp file. This will be deleted later
-                            string csvFileName = fullPath + @"\" + vs2.Name + @".csv"; 
+                            string csvFileName = fullPath + @"\" + vs2.Name + @".csv";
                             // Copy the single worksheet from the template workbook to the new workbook.
-                            copiedWorksheet = newPackage.Workbook.Worksheets.Add(vs2.Name, templateWorksheet);
 
 
                             // Define the range where you want to start loading the data (e.g., C1)
-                            startCell = copiedWorksheet.Cells["A1"];
+                            ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
                             // Load data from the CSV, skipping the first row and setting the second row as the column headers.
                             var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
                             ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
 
                             //add's image inside the header
                             var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
-                                new FileInfo(fullPath+@"\\Header.png"), PictureAlignment.Centered
+                                new FileInfo(fullPath + @"\\Header.png"), PictureAlignment.Centered
                                 );
                             // Iterate through rows until an empty row is encountered.
                             int currentColumn = 1; // Start from the first colums
@@ -481,7 +461,7 @@ namespace IntechRibbon
                             System.String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
 
                             var dataRange = copiedWorksheet.Cells[merger2];
-                            ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table"+ tableNum);
+                            ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table" + tableNum);
                             tableNum += 1;
                             table.TableStyle = TableStyles.Light8;
                             table.ShowHeader = true;
@@ -506,30 +486,27 @@ namespace IntechRibbon
                             {
                                 copiedWorksheet.PrinterSettings.Orientation = eOrientation.Landscape;
                             }
-                            else 
+                            else
                             {
                                 copiedWorksheet.PrinterSettings.Orientation = eOrientation.Portrait;
                             }
 
                             File.Delete(csvFileName); //Remove Temporary File
-
+                            try
+                            {
+                                TaskDialog.Show("Sucess", "File will now be saved");
+                                newPackage.Save();
+                            }
+                            catch (Exception e)
+                            {
+                                TaskDialog.Show("Error", e.ToString());
+                            }
                         }
-
-                        try
-                        {
-                            TaskDialog.Show("Sucess", "File will now be saved");
-                            newPackage.SaveAs(new FileInfo(excelFileName));
-                        }
-                        catch (Exception e)
-                        {
-                            TaskDialog.Show("Error", e.ToString());
-                        }
-                        
                     }
                 }
                 Console.WriteLine("Finished!");//do a task dialog instead
                 Console.ReadLine();
-                
+
 
             }
 
