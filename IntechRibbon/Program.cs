@@ -88,7 +88,7 @@ namespace IntechRibbon
                     catch (Exception ex)
                     {
                         // If any error, give error information and return failed
-                        TaskDialog.Show("ERROR", ex.ToString());
+                        TaskDialog.Show("Error", ex.ToString());
                         return Autodesk.Revit.UI.Result.Failed;
                     }
 
@@ -387,7 +387,6 @@ namespace IntechRibbon
                 var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
                 Directory.CreateDirectory(fullPath);
                 string excelFileName = saveFolder;
-                TaskDialog.Show("File Name", excelFileName);
 
                 //change this to selected directory in step 1
 
@@ -494,8 +493,8 @@ namespace IntechRibbon
                             File.Delete(csvFileName); //Remove Temporary File
                             try
                             {
-                                TaskDialog.Show("Sucess", "File will now be saved");
                                 newPackage.Save();
+                                TaskDialog.Show("Sucess", "File saved");
                             }
                             catch (Exception e)
                             {
