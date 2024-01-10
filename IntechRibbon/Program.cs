@@ -5,11 +5,13 @@ using OfficeOpenXml.Style;
 using OfficeOpenXml.Table;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using static Autodesk.Revit.DB.SpecTypeId;
+using CsvHelper;
 
 namespace IntechRibbon
 {
@@ -21,13 +23,13 @@ namespace IntechRibbon
 
             UIApplication uiApp = commandData.Application;
             Document doc = uiApp.ActiveUIDocument.Document;
-
+            
             if (doc == null)
             {
                 TaskDialog.Show("Error", "No active document found.");
                 return Result.Failed;
             }
-
+            //utility.GetScheduleData(doc); //temp test
             string baseFolder = string.Empty;
             List<ViewSchedule> schedules;//list of scheuled
             List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
@@ -241,6 +243,106 @@ namespace IntechRibbon
 
 
         }
+
+        public static void GetScheduleData(Document doc, System.String filePath)
+        {
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            IList<Element> collection = collector.OfClass(typeof(ViewSchedule)).ToElements();
+
+            System.String prompt = "ScheduleData :";
+            prompt += Environment.NewLine;
+
+            foreach (Element e in collection)
+            {
+                ViewSchedule viewSchedule = e as ViewSchedule;
+                TableData table = viewSchedule.GetTableData();
+                TableSectionData section = table.GetSectionData(SectionType.Body);
+                int nRows = section.NumberOfRows;
+                int nColumns = section.NumberOfColumns;
+
+                if (nRows > 1)
+                {
+                    //valueData.Add(viewSchedule.Name);
+
+                    List<List<string>> scheduleData = new List<List<string>>();
+                    for (int i = 0; i < nRows; i++)
+                    {
+                        List<string> rowData = new List<string>();
+
+                        for (int j = 0; j < nColumns; j++)
+                        {
+                            rowData.Add(viewSchedule.GetCellText(SectionType.Body, i, j));
+                        }
+                        scheduleData.Add(rowData);
+                    }
+
+                    List<string> columnData = scheduleData[0];
+                    scheduleData.RemoveAt(0);
+                    WriteListListToCsv(scheduleData, filePath);
+                    //DataMapping(columnData, scheduleData);
+                }
+            }
+        }
+
+        // Custom method to write List<List<string>> data to a CSV file using CsvHelper
+        static void WriteListListToCsv(List<List<string>> scheduleData, string filePath)
+        {
+            try
+            {
+                using (var writer = new StreamWriter(filePath))
+                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                {
+                    // Write records to the CSV file
+                    csv.WriteRecords(scheduleData);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error writing to CSV file: " + ex.Message);
+            }
+        }
+
+        public static void DataMapping(List<string> keyData, List<List<string>> valueData) //input is array of rows
+        {
+
+            using (var stream = new MemoryStream())
+            {
+                // Use the stream.
+            }
+
+
+
+            /*
+            List<Dictionary<string, string>> items = new List<Dictionary<string, string>>();
+
+            string prompt = "Key/Value";
+            prompt += Environment.NewLine;
+
+            foreach (List<string> list in valueData)
+            {
+                for (int key = 0, value = 0; key < keyData.Count && value < list.Count; key++, value++)
+                {
+                    Dictionary<string, string> newItem = new Dictionary<string, string>();
+
+                    string k = keyData[key];
+                    string v = list[value];
+                    newItem.Add(k, v);
+                    items.Add(newItem);
+                }
+            }
+
+            foreach (Dictionary<string, string> item in items)
+            {
+                foreach (KeyValuePair<string, string> kvp in item)
+                {
+                    prompt += "Key: " + kvp.Key + ",Value: " + kvp.Value;
+                    prompt += Environment.NewLine;
+                }
+            }
+
+            Autodesk.Revit.UI.TaskDialog.Show("Revit", prompt);*/
+        }
+
         public static Result tigerExport(Document doc, ref string message, string saveFolder, DialogResult result,
                                 List<ViewSchedule> schedules,
                                 List<ViewSchedule> selected
@@ -412,10 +514,12 @@ namespace IntechRibbon
                         {
                             
                             ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(vs2.Name, templateWorksheet);
-                        
+
                             //export Schedules To CSV 
-                            vs2.Export(fullPath, vs2.Name + ".csv", opt);//Temp file. This will be deleted later
+                            //vs2.Export(fullPath, vs2.Name + ".csv", opt);//Temp file. This will be deleted later
                             string csvFileName = fullPath + @"\" + vs2.Name + @".csv";
+                            GetScheduleData(doc, csvFileName);
+
                             // Copy the single worksheet from the template workbook to the new workbook.
 
 
@@ -503,8 +607,7 @@ namespace IntechRibbon
                         }
                     }
                 }
-                Console.WriteLine("Finished!");//do a task dialog instead
-                Console.ReadLine();
+                
 
 
             }
