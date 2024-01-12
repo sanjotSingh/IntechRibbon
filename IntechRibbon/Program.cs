@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using DocumentFormat.OpenXml.Spreadsheet;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using OfficeOpenXml.Table;
@@ -11,7 +12,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using static Autodesk.Revit.DB.SpecTypeId;
-using CsvHelper;
 
 namespace IntechRibbon
 {
@@ -81,7 +81,6 @@ namespace IntechRibbon
                         return Result.Cancelled;
                     }
 
-
                     try
                     {
                         //convert selected schexdule to excel
@@ -93,8 +92,6 @@ namespace IntechRibbon
                         TaskDialog.Show("Error", ex.ToString());
                         return Autodesk.Revit.UI.Result.Failed;
                     }
-
-
                 }
 
             }
@@ -126,10 +123,6 @@ namespace IntechRibbon
             List<ViewSchedule> schedules;//list of scheuled
             List<ViewSchedule> selected = new List<ViewSchedule>();  //List of selected schedules
             Dictionary<ViewSchedule, string> displayNames = new Dictionary<ViewSchedule, string>(); //to display proper name in the checkedlistbox.
-
-
-
-
             //we now have the location where the file will be saved.
             // Create a form to select schedules.
             DialogResult result2 = System.Windows.Forms.DialogResult.None;
@@ -244,104 +237,58 @@ namespace IntechRibbon
 
         }
 
-        public static void GetScheduleData(Document doc, System.String filePath)
+        public static void GetScheduleData(ViewSchedule vs, System.String filePath)
         {
-            FilteredElementCollector collector = new FilteredElementCollector(doc);
-            IList<Element> collection = collector.OfClass(typeof(ViewSchedule)).ToElements();
-
-            System.String prompt = "ScheduleData :";
-            prompt += Environment.NewLine;
-
-            foreach (Element e in collection)
-            {
-                ViewSchedule viewSchedule = e as ViewSchedule;
-                TableData table = viewSchedule.GetTableData();
+            
+                TableData table = vs.GetTableData();
                 TableSectionData section = table.GetSectionData(SectionType.Body);
                 int nRows = section.NumberOfRows;
                 int nColumns = section.NumberOfColumns;
 
-                if (nRows > 1)
+
+            if (nRows > 1)
+            {
+                //valueData.Add(viewSchedule.Name);
+
+                List<List<string>> scheduleData = new List<List<string>>();
+                for (int i = 0; i < nRows; i++)
                 {
-                    //valueData.Add(viewSchedule.Name);
+                    List<string> rowData = new List<string>();
 
-                    List<List<string>> scheduleData = new List<List<string>>();
-                    for (int i = 0; i < nRows; i++)
+                    for (int j = 0; j < nColumns; j++)
                     {
-                        List<string> rowData = new List<string>();
-
-                        for (int j = 0; j < nColumns; j++)
-                        {
-                            rowData.Add(viewSchedule.GetCellText(SectionType.Body, i, j));
-                        }
-                        scheduleData.Add(rowData);
+                        rowData.Add("\"" + vs.GetCellText(SectionType.Body, i, j).Replace("\"", "\"\"") + "\"");//added text qualifiers (the quotations)
                     }
-
-                    List<string> columnData = scheduleData[0];
-                    scheduleData.RemoveAt(0);
-                    WriteListListToCsv(scheduleData, filePath);
-                    //DataMapping(columnData, scheduleData);
+                    scheduleData.Add(rowData);
                 }
-            }
-        }
 
-        // Custom method to write List<List<string>> data to a CSV file using CsvHelper
-        static void WriteListListToCsv(List<List<string>> scheduleData, string filePath)
+                customExport(scheduleData, filePath);
+            }       
+         }
+        
+        static void customExport(List<List<string>> scheduleData, string filePath)
         {
+            
+
             try
             {
-                using (var writer = new StreamWriter(filePath))
-                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                using (StreamWriter file = new StreamWriter(filePath))
                 {
-                    // Write records to the CSV file
-                    csv.WriteRecords(scheduleData);
+                    foreach (List<string> row in scheduleData)
+                    {
+                        file.WriteLine(string.Join(",", row)); //EOL serquence
+                    }
+                    
                 }
+
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error writing to CSV file: " + ex.Message);
+                TaskDialog.Show("Error writing to CSV file: ", ex.ToString());
             }
+            
         }
 
-        public static void DataMapping(List<string> keyData, List<List<string>> valueData) //input is array of rows
-        {
-
-            using (var stream = new MemoryStream())
-            {
-                // Use the stream.
-            }
-
-
-
-            /*
-            List<Dictionary<string, string>> items = new List<Dictionary<string, string>>();
-
-            string prompt = "Key/Value";
-            prompt += Environment.NewLine;
-
-            foreach (List<string> list in valueData)
-            {
-                for (int key = 0, value = 0; key < keyData.Count && value < list.Count; key++, value++)
-                {
-                    Dictionary<string, string> newItem = new Dictionary<string, string>();
-
-                    string k = keyData[key];
-                    string v = list[value];
-                    newItem.Add(k, v);
-                    items.Add(newItem);
-                }
-            }
-
-            foreach (Dictionary<string, string> item in items)
-            {
-                foreach (KeyValuePair<string, string> kvp in item)
-                {
-                    prompt += "Key: " + kvp.Key + ",Value: " + kvp.Value;
-                    prompt += Environment.NewLine;
-                }
-            }
-
-            Autodesk.Revit.UI.TaskDialog.Show("Revit", prompt);*/
-        }
 
         public static Result tigerExport(Document doc, ref string message, string saveFolder, DialogResult result,
                                 List<ViewSchedule> schedules,
@@ -353,21 +300,27 @@ namespace IntechRibbon
 
                 //now we have a list of selected schedules.
                 //we need to export these schedules
-                ViewScheduleExportOptions opt = new ViewScheduleExportOptions();
-                opt.FieldDelimiter = ","; //csv file is seperated by a comma
+
                 var roamingApplicationPath = Environment.ExpandEnvironmentVariables("%appdata%");
                 var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
                 Directory.CreateDirectory(fullPath);
+                string pattern = @"[\\/:*?""<>|]";
+                string worksheetName;
+
 
                 foreach (ViewSchedule vs in selected)
                 {
                     //change this to selected directory in step 1
-                    vs.Export(fullPath, vs.Name + ".csv", opt);
 
 
-                    string csvFileName = fullPath + @"\" + vs.Name + @".csv";
-                    string excelFileName = saveFolder + @"\" + vs.Name + @".xlsx";
+                    
                     string template = fullPath + @"\\template.xlsx";
+                    worksheetName = Regex.Replace(vs.Name, pattern, "");
+
+                    string csvFileName = fullPath + @"\" + worksheetName + @".csv";
+                    string excelFileName = saveFolder + @"\" + worksheetName + @".xlsx";
+
+
                     if (!File.Exists(template))
                     {
                         TaskDialog.Show("Error", "The template file does not exist.");
@@ -375,41 +328,40 @@ namespace IntechRibbon
                     var format = new ExcelTextFormat();
                     format.Delimiter = ',';
                     format.TextQualifier = '"';     // format.TextQualifier = '"';
-                    format.EOL = "\r";              // DEFAULT IS "\r\n";
+                    format.EOL = "\n";              // DEFAULT IS "\r\n";
 
-                    string pattern = @"[\[\]:*?/\\]";
-                    string worksheetName;
+                    
 
                     using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
                     {
                         using (ExcelPackage newPackage = new ExcelPackage())
                         {
-                            worksheetName = Regex.Replace(vs.Name, pattern, "");
+                            
 
                             // Copy the single worksheet from the template workbook to the new workbook.
                             ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
                             ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(worksheetName, templateWorksheet);
 
+                            //export data to csv
+                            GetScheduleData(vs, csvFileName);
+                            //Add header
+                            copiedWorksheet.Cells["A1"].Value = vs.Name;
                             // Define the range where you want to start loading the data (e.g., C1)
-                            ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
-
+                            ExcelRangeBase startCell = copiedWorksheet.Cells["A2"];
                             // Load data from the CSV, skipping the first row and setting the second row as the column headers.
                             var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
-
 
                             //add's image inside the header
                             var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
                                 new FileInfo(fullPath + @"\\Header.png"), PictureAlignment.Centered
                                 );
-
                             // Iterate through rows until an empty row is encountered.
                             int currentColumn = 1; // Start from the first colums
                             while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[2, currentColumn].Text))
                             {
                                 currentColumn++; // Move to the next row
                             }
-
-                            int currentRow = 4; // Start from the fourth row 
+                            int currentRow = 3; // Start from the fourth row 
                             while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
                             {
                                 currentRow++; // Move to the next row
@@ -429,16 +381,17 @@ namespace IntechRibbon
                             cellStyle.Border.Bottom.Style = ExcelBorderStyle.Thin;
                             cellStyle.Border.Left.Style = ExcelBorderStyle.Thin;
                             cellStyle.Border.Right.Style = ExcelBorderStyle.Thin;
-
                             //Add a table onto the data
+
                             System.String merger2 = "A2:" + IndexToColumn(currentColumn - 1) + (currentRow - 1); //get data range
+
                             var dataRange = copiedWorksheet.Cells[merger2];
                             ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table");
-                            table.TableStyle = TableStyles.Light8;
+                            table.TableStyle = OfficeOpenXml.Table.TableStyles.Light8;
                             table.ShowHeader = true;
 
                             //autofit cell columns
-                            copiedWorksheet.Cells.AutoFitColumns();
+                            copiedWorksheet.Cells[copiedWorksheet.Dimension.Address].AutoFitColumns();
 
                             // Get the height of the row in points.
                             double rowHeight = 0;
@@ -447,7 +400,7 @@ namespace IntechRibbon
                                 ExcelColumn row = copiedWorksheet.Column(i);
                                 rowHeight += row.Width;
                             }
-                            if (rowHeight < 100)
+                            if (rowHeight > 100)
                             {
                                 copiedWorksheet.PrinterSettings.Orientation = eOrientation.Landscape;
                             }
@@ -465,12 +418,13 @@ namespace IntechRibbon
                             catch (Exception e)
                             {
                                 TaskDialog.Show("Error", e.ToString());
+                                return Autodesk.Revit.UI.Result.Failed;
                             }
                         }
                     }
                 }
             }
-
+            TaskDialog.Show("Success", "File saved");
             return Autodesk.Revit.UI.Result.Succeeded;
 
         }
@@ -483,8 +437,6 @@ namespace IntechRibbon
             {
                 //now we have a list of selected schedules.
                 //we need to export these schedules
-                ViewScheduleExportOptions opt = new ViewScheduleExportOptions();
-                opt.FieldDelimiter = ","; //csv file is seperated by a comma
                 var roamingApplicationPath = Environment.ExpandEnvironmentVariables("%appdata%");
                 var fullPath = roamingApplicationPath + @"\Autodesk\Revit\temp";
                 Directory.CreateDirectory(fullPath);
@@ -500,34 +452,31 @@ namespace IntechRibbon
                 var format = new ExcelTextFormat();
                 format.Delimiter = ',';
                 format.TextQualifier = '"';     // format.TextQualifier = '"';
-                format.EOL = "\r";              // DEFAULT IS "\r\n";
+                format.EOL = "\n";              // DEFAULT IS "\r\n";
 
 
                 using (ExcelPackage templatePackage = new ExcelPackage(new FileInfo(template)))
                 {
                     // Copy the single worksheet from the template workbook to the new workbook.
                     ExcelWorksheet templateWorksheet = templatePackage.Workbook.Worksheets[0]; // Assuming it's the first worksheet
-                    int tableNum = 0;
+                    int tableNum = 1;
                     foreach (ViewSchedule vs2 in selected)
                     {
                         using (ExcelPackage newPackage = new ExcelPackage(excelFileName))
                         {
-                            
-                            ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(vs2.Name, templateWorksheet);
+                            string pattern = @"[\\/:*?""<>|]";
+                            System.String name = Regex.Replace(vs2.Name, pattern, "");
+                            string csvFileName = fullPath + @"\" + name + @".csv";
+                            ExcelWorksheet copiedWorksheet = newPackage.Workbook.Worksheets.Add(name, templateWorksheet);
 
-                            //export Schedules To CSV 
-                            //vs2.Export(fullPath, vs2.Name + ".csv", opt);//Temp file. This will be deleted later
-                            string csvFileName = fullPath + @"\" + vs2.Name + @".csv";
-                            GetScheduleData(doc, csvFileName);
-
-                            // Copy the single worksheet from the template workbook to the new workbook.
-
-
+                            //export data to csv
+                            GetScheduleData(vs2, csvFileName);
+                            //Add header
+                            copiedWorksheet.Cells["A1"].Value = vs2.Name;
                             // Define the range where you want to start loading the data (e.g., C1)
-                            ExcelRangeBase startCell = copiedWorksheet.Cells["A1"];
+                            ExcelRangeBase startCell = copiedWorksheet.Cells["A2"];
                             // Load data from the CSV, skipping the first row and setting the second row as the column headers.
                             var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format);
-                            ////var range = copiedWorksheet.Cells[startCell.Address].LoadFromText(new FileInfo(csvFileName), format, OfficeOpenXml.Table.TableStyles.Light8, firstRowIsHeader);
 
                             //add's image inside the header
                             var img = copiedWorksheet.HeaderFooter.OddHeader.InsertPicture(
@@ -539,7 +488,7 @@ namespace IntechRibbon
                             {
                                 currentColumn++; // Move to the next row
                             }
-                            int currentRow = 4; // Start from the fourth row 
+                            int currentRow = 3; // Start from the fourth row 
                             while (!string.IsNullOrWhiteSpace(copiedWorksheet.Cells[currentRow, 1].Text))
                             {
                                 currentRow++; // Move to the next row
@@ -565,27 +514,21 @@ namespace IntechRibbon
 
                             var dataRange = copiedWorksheet.Cells[merger2];
                             ExcelTable table = copiedWorksheet.Tables.Add(dataRange, "Table" + tableNum);
-                            tableNum += 1;
-                            table.TableStyle = TableStyles.Light8;
+                            tableNum = tableNum+1;
+                            table.TableStyle = OfficeOpenXml.Table.TableStyles.Light8;
                             table.ShowHeader = true;
 
-
-
                             //autofit cell columns
-                            copiedWorksheet.Cells.AutoFitColumns();
-
-
-
+                            copiedWorksheet.Cells[copiedWorksheet.Dimension.Address].AutoFitColumns();
 
                             // Get the height of the row in points.
-
                             double rowHeight = 0;
                             for (int i = currentColumn; i != 1; i--)
                             {
                                 ExcelColumn row = copiedWorksheet.Column(i);
                                 rowHeight += row.Width;
                             }
-                            if (rowHeight < 100)
+                            if (rowHeight > 100)
                             {
                                 copiedWorksheet.PrinterSettings.Orientation = eOrientation.Landscape;
                             }
@@ -598,20 +541,19 @@ namespace IntechRibbon
                             try
                             {
                                 newPackage.Save();
-                                TaskDialog.Show("Sucess", "File saved");
                             }
                             catch (Exception e)
                             {
                                 TaskDialog.Show("Error", e.ToString());
+                                return Autodesk.Revit.UI.Result.Failed;
+
                             }
                         }
                     }
+                    
                 }
-                
-
-
             }
-
+            TaskDialog.Show("Success", "File saved");
             return Autodesk.Revit.UI.Result.Succeeded;
 
         }

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntechRibbon", "IntechRibbon.csproj", "{F79DD711-DC04-4F30-AD06-2ACF3AB03004}"
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "IntechSetup", "..\IntechSetup\IntechSetup.vdproj", "{CC02E370-2217-423C-AABB-CFB99C982C98}"
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "IntechSetup", "..\IntechSetup\IntechSetup.vdproj", "{247F7176-CF2C-4F48-8E73-F843A375C529}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,12 +29,12 @@ Global
 		{F79DD711-DC04-4F30-AD06-2ACF3AB03004}.Release|x64.Build.0 = Release|x64
 		{F79DD711-DC04-4F30-AD06-2ACF3AB03004}.Release|x86.ActiveCfg = Release|x86
 		{F79DD711-DC04-4F30-AD06-2ACF3AB03004}.Release|x86.Build.0 = Release|x86
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Debug|Any CPU.ActiveCfg = Debug
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Debug|x64.ActiveCfg = Debug
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Debug|x86.ActiveCfg = Debug
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Release|Any CPU.ActiveCfg = Release
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Release|x64.ActiveCfg = Release
-		{CC02E370-2217-423C-AABB-CFB99C982C98}.Release|x86.ActiveCfg = Release
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Debug|Any CPU.ActiveCfg = Debug
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Debug|x64.ActiveCfg = Debug
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Debug|x86.ActiveCfg = Debug
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Release|Any CPU.ActiveCfg = Release
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Release|x64.ActiveCfg = Release
+		{247F7176-CF2C-4F48-8E73-F843A375C529}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

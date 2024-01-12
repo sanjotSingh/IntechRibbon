@@ -26,7 +26,7 @@ namespace IntechRibbon
         // Button icons directory
         static string ButtonIconsFolder = Path.GetDirectoryName(AddInPath);
         // uiApplication
-        //static UIApplication uiApplication = null;
+        static UIApplication uiApplication = null;
 
         #region IExternalApplication Members
         public Autodesk.Revit.UI.Result OnStartup(UIControlledApplication application)
@@ -49,15 +49,6 @@ namespace IntechRibbon
  
         public Autodesk.Revit.UI.Result OnShutdown(UIControlledApplication application)
         {
-            //remove events
-            //List<RibbonPanel> myPanels = application.GetRibbonPanels();
-            //Autodesk.Revit.UI.ComboBox comboboxLevel = (Autodesk.Revit.UI.ComboBox)(myPanels[0].GetItems()[2]);
-            //application.ControlledApplication.DocumentCreated -= new EventHandler<
-            //   Autodesk.Revit.DB.Events.DocumentCreatedEventArgs>(DocumentCreated);
-            //Autodesk.Revit.UI.TextBox textBox = myPanels[0].GetItems()[5] as Autodesk.Revit.UI.TextBox;
-            //textBox.EnterPressed -= new EventHandler<
-            //   Autodesk.Revit.UI.Events.TextBoxEnterPressedEventArgs>(SetTextBoxValue);
-
             return Autodesk.Revit.UI.Result.Succeeded;
         }
         #endregion
@@ -69,29 +60,26 @@ namespace IntechRibbon
 
             // create a Ribbon panel which contains three stackable buttons and one single push button.
             string firstPanelName = "Export";
+            
             RibbonPanel ribbonSamplePanel = application.CreateRibbonPanel(tabName, firstPanelName);
 
+            PushButtonData b1Data = new PushButtonData("BOMExport", "BOM Export", AddInPath, "IntechRibbon.ExportSchedulesToCSV");
+            b1Data.ToolTip = "Export all schedules into a single CSV file.";
+            b1Data.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "icon.png"), UriKind.Absolute)); ;
+            PushButton pb1 = ribbonSamplePanel.AddItem(b1Data) as PushButton;
 
-
-            #region Create a SplitButton for user to create Non-Structural or Structural Wall
-            SplitButtonData splitButtonData = new SplitButtonData("BOM Export", "Tiger Export");
-            SplitButton splitButton = ribbonSamplePanel.AddItem(splitButtonData) as SplitButton;
-            PushButton pushButton = splitButton.AddPushButton(new PushButtonData("BOMExport", "BOM Export", AddInPath, "IntechRibbon.ExportSchedulesToCSV"));
-            //pushButton.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWall.png"), UriKind.Absolute));
-            //pushButton.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWall-S.png"), UriKind.Absolute)); //add intech.png instead
-            //pushButton.ToolTip = "Creates a partition wall in the building model.";
-            //pushButton.ToolTipImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "CreateWallTooltip.bmp"), UriKind.Absolute));
-            pushButton = splitButton.AddPushButton(new PushButtonData("TigerExport", "Tiger Export", AddInPath, "IntechRibbon.TigerExport"));//need to implement exportschedulrtocsv method
-            //pushButton.LargeImage = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "StrcturalWall.png"), UriKind.Absolute));
-            //pushButton.Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "StrcturalWall-S.png"), UriKind.Absolute));//add intech.png instead
-            #endregion
 
             ribbonSamplePanel.AddSeparator();
+            PushButtonData b2Data = new PushButtonData("TigerExport", "Tiger Export", AddInPath, "IntechRibbon.TigerExport");
 
+            b2Data.ToolTip = "Export all schedules into individual CSV files.";
+            BitmapImage pb2Image = new BitmapImage(new Uri(Path.Combine(ButtonIconsFolder, "icon.png"), UriKind.Absolute));
+            b2Data.Image = pb2Image;
+            PushButton pb2 = ribbonSamplePanel.AddItem(b2Data) as PushButton;
 
-         
+    
         }
 
-        
+
     }
 }
